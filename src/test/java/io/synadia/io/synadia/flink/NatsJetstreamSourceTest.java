@@ -4,6 +4,8 @@
 package io.synadia.io.synadia.flink;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import io.nats.client.api.AckPolicy;
+import io.nats.client.api.ConsumerConfiguration;
 import io.nats.client.api.SequenceInfo;
 import io.nats.client.api.StreamConfiguration;
 import io.synadia.flink.source.js.NatsConsumerConfig;
@@ -32,6 +34,10 @@ public class NatsJetstreamSourceTest extends TestBase{
             // publish to the source's subjects
             StreamConfiguration stream = new StreamConfiguration.Builder().name(streamName).subjects(sourceSubject1).build();
             nc.jetStreamManagement().addStream(stream);
+            ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder()
+                            .durable(consumerName).ackPolicy(AckPolicy.All)
+                            .filterSubject(sourceSubject1).build();
+            nc.jetStreamManagement().addOrUpdateConsumer(streamName, consumerConfiguration);
             nc.jetStream().publish(sourceSubject1, "Hi".getBytes());
             nc.jetStream().publish(sourceSubject1, "Hello".getBytes());
 
@@ -39,7 +45,7 @@ public class NatsJetstreamSourceTest extends TestBase{
             Properties connectionProperties = defaultConnectionProperties(url);
             DeserializationSchema<String> deserializer = new SimpleStringSchema();
             NatsConsumerConfig consumerConfig = new NatsConsumerConfig.Builder().withConsumerName(consumerName).
-                    withBatchSize(5).build();
+                    withBatchSize(5).withStreamName(streamName).build();
             NatsJetstreamSourceBuilder<String> builder = new NatsJetstreamSourceBuilder<String>()
                     .subjects(sourceSubject1)
                     .payloadDeserializer(deserializer)

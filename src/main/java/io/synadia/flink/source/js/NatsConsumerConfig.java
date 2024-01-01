@@ -7,12 +7,13 @@ import java.io.Serializable;
 public class NatsConsumerConfig implements Serializable {
 
     private final String consumerName;
+    private final String streamName;
     private final int batchSize;
 
     private NatsConsumerConfig(Builder builder) {
         this.consumerName = builder.consumerName;
         this.batchSize = builder.batchSize;
-
+        this.streamName = builder.streamName;
     }
 
     public String getConsumerName() {
@@ -23,10 +24,14 @@ public class NatsConsumerConfig implements Serializable {
         return batchSize;
     }
 
+    public String getStreamName() {
+        return streamName;
+    }
 
     public static class Builder {
         private String consumerName;
         private int batchSize;
+        private String streamName;
 
         public Builder() {
         }
@@ -38,6 +43,11 @@ public class NatsConsumerConfig implements Serializable {
 
         public Builder withBatchSize(int batchSize) {
             this.batchSize = batchSize;
+            return this;
+        }
+
+        public Builder withStreamName(String streamName) {
+            this.streamName = streamName;
             return this;
         }
 

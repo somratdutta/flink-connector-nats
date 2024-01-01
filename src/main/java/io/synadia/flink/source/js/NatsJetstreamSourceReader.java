@@ -71,10 +71,8 @@ public class NatsJetstreamSourceReader<OutputT> implements SourceReader<OutputT,
         try {
             connection = connectionFactory.connect();
             js = connection.jetStream();
-            ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder().name(config.getConsumerName())
-                    .ackPolicy(AckPolicy.All).build();
-            PullSubscribeOptions pullOptions = PullSubscribeOptions.builder()
-                    .configuration(consumerConfiguration).durable(config.getConsumerName())
+            PullSubscribeOptions pullOptions = PullSubscribeOptions.builder().bind(true)
+                    .durable(config.getConsumerName()).stream(config.getStreamName())
                     .build();
             subscription = js.subscribe(subject, pullOptions);
         }
