@@ -10,6 +10,7 @@ public class NatsConsumerConfig implements Serializable {
     private final String streamName;
     private final int batchSize;
 
+
     private NatsConsumerConfig(Builder builder) {
         this.consumerName = builder.consumerName;
         this.batchSize = builder.batchSize;
@@ -20,12 +21,13 @@ public class NatsConsumerConfig implements Serializable {
         return consumerName;
     }
 
-    public int getBatchSize() {
-        return batchSize;
-    }
-
     public String getStreamName() {
         return streamName;
+    }
+
+
+    public int getBatchSize() {
+        return batchSize;
     }
 
     public static class Builder {
@@ -41,15 +43,16 @@ public class NatsConsumerConfig implements Serializable {
             return this;
         }
 
+        public Builder withStreamName(String streamName) {
+            this.streamName = streamName;
+            return this;
+        }
+
         public Builder withBatchSize(int batchSize) {
             this.batchSize = batchSize;
             return this;
         }
 
-        public Builder withStreamName(String streamName) {
-            this.streamName = streamName;
-            return this;
-        }
 
         public NatsConsumerConfig build() {
             return new NatsConsumerConfig(this);

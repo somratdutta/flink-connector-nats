@@ -15,7 +15,6 @@ import io.synadia.flink.payload.StringPayloadDeserializer;
 import io.synadia.flink.source.js.NatsConsumerConfig;
 import io.synadia.flink.source.js.NatsJetstreamSource;
 import io.synadia.flink.source.js.NatsJetstreamSourceBuilder;
-import java.util.Properties;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -26,6 +25,10 @@ import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.junit.jupiter.api.Test;
+
+import java.util.Properties;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class NatsJetstreamSourceTest extends TestBase{
 
