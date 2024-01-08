@@ -46,13 +46,18 @@ public class NatsJetstreamSourceBuilder<OutputT> {
         return this;
     }
 
+    public NatsJetstreamSourceBuilder<OutputT> boundedness(Boundedness mode) {
+        this.mode = mode;
+        return this;
+    }
+
     /**
      * Build a NatsSource. Subject and
      * @return the source
      */
     public NatsJetstreamSource<OutputT> build() {
         if (deserializationSchema == null) {
-                throw new IllegalStateException("Valid payload serializer class must be provided.");
+            throw new IllegalStateException("Valid payload serializer class must be provided.");
         }
         if (cc == null ) {
             throw new IllegalStateException("Consumer configuration not provided");

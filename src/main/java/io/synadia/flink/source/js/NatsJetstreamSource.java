@@ -44,7 +44,7 @@ public class NatsJetstreamSource<OutputT> implements Source<OutputT, NatsSubject
 
     @Override
     public Boundedness getBoundedness() {
-        return Boundedness.BOUNDED;
+        return this.mode;
     }
 
     @Override
