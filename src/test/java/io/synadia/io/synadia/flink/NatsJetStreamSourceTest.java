@@ -31,7 +31,7 @@ import java.util.Properties;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class NatsJetstreamSourceTest extends TestBase{
+public class NatsJetStreamSourceTest extends TestBase{
 
     @Test
     public void testSourceBounded() throws Exception {
@@ -62,7 +62,7 @@ public class NatsJetstreamSourceTest extends TestBase{
                     .setNatsUrl("localhost:4222")
                     .setSubject(sourceSubject1);
 
-            NatsJetstreamSource<String> natsSource = builder.build();
+            NatsJetStreamSource<String> natsSource = builder.build();
             StreamExecutionEnvironment env = getStreamExecutionEnvironment();
            // env.enableCheckpointing(10000L, CheckpointingMode.AT_LEAST_ONCE);
            // env.getCheckpointConfig().setCheckpointingMode(CheckpointingMode.AT_LEAST_ONCE);
@@ -102,9 +102,9 @@ public class NatsJetstreamSourceTest extends TestBase{
             StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
             DeserializationSchema<String> deserializer = new SimpleStringSchema();
             Properties connectionProperties = defaultConnectionProperties(url);
-            NatsConsumerConfig consumerConfig = new NatsConsumerConfig.Builder()
-                    .withConsumerName(consumerName).withStreamName(streamName).withBatchSize(5).build();
-            NatsJetstreamSourceBuilder<String> builder = new NatsJetstreamSourceBuilder<String>()
+            NatsConsumeOptions consumerConfig = new NatsConsumeOptions.Builder()
+                    .consumer(consumerName).stream(streamName).batchSize(5).build();
+            NatsJetStreamSourceBuilder<String> builder = new NatsJetStreamSourceBuilder<String>()
                     .subjects(sourceSubject).payloadDeserializer(deserializer)
                     .boundedness(Boundedness.CONTINUOUS_UNBOUNDED).consumerConfig(consumerConfig);
             builder.connectionProperties(connectionProperties);

@@ -1,7 +1,7 @@
 // Copyright (c) 2023 Synadia Communications Inc. All Rights Reserved.
 // See LICENSE and NOTICE file for details.
 
-package io.synadia.flink.source.js;
+package io.synadia.flink.source;
 
 import io.nats.client.NUID;
 import io.synadia.flink.Utils;
@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class NatsJetstreamSource<OutputT> implements Source<OutputT, NatsSubjectSplit, Collection<NatsSubjectSplit>>, ResultTypeQueryable<OutputT> {
+public class NatsJetStreamSource<OutputT> implements Source<OutputT, NatsSubjectSplit, Collection<NatsSubjectSplit>>, ResultTypeQueryable<OutputT> {
 
     private final PayloadDeserializer<OutputT> deserializationSchema;
     private static final Logger LOG = LoggerFactory.getLogger(NatsJetstreamSource.class);

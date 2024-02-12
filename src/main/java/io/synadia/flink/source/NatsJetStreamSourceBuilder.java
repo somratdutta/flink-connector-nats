@@ -1,7 +1,7 @@
 // Copyright (c) 2023 Synadia Communications Inc. All Rights Reserved.
 // See LICENSE and NOTICE file for details.
 
-package io.synadia.flink.source.js;
+package io.synadia.flink.source;
 
 import static io.synadia.flink.Constants.SOURCE_STARTUP_JITTER_MAX;
 import static io.synadia.flink.Constants.SOURCE_STARTUP_JITTER_MIN;
@@ -46,7 +46,7 @@ public class NatsJetstreamSourceBuilder<OutputT> {
         return this;
     }
 
-    public NatsJetstreamSourceBuilder<OutputT> boundedness(Boundedness mode) {
+    public NatsJetStreamSourceBuilder<OutputT> boundedness(Boundedness mode) {
         this.mode = mode;
         return this;
     }
