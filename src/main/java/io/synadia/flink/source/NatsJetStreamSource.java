@@ -1,11 +1,7 @@
-// Copyright (c) 2023 Synadia Communications Inc. All Rights Reserved.
-// See LICENSE and NOTICE file for details.
-
 package io.synadia.flink.source;
 
 import io.synadia.flink.Utils;
 import io.synadia.flink.common.ConnectionFactory;
-import io.synadia.flink.source.NatsConsumeOptions;
 import io.synadia.flink.source.enumerator.NatsSourceEnumerator;
 import io.synadia.flink.source.split.NatsSubjectCheckpointSerializer;
 import io.synadia.flink.source.split.NatsSubjectSplit;
@@ -89,7 +85,7 @@ public class NatsJetStreamSource<OutputT> implements Source<OutputT, NatsSubject
 
     @Override
     public String toString() {
-        return "NatsSource{" +
+        return "NatsJetStreamSource{" +
                 "id='" + id + '\'' +
                 ", subjects=" + natsSubject +
                 ", payloadDeserializer=" + payloadDeserializer.getClass().getCanonicalName() +

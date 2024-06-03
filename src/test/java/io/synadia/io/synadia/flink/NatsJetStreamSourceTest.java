@@ -1,6 +1,3 @@
-// Copyright (c) 2023 Synadia Communications Inc. All Rights Reserved.
-// See LICENSE and NOTICE file for details.
-
 package io.synadia.io.synadia.flink;
 
 import io.nats.client.JetStream;
@@ -18,6 +15,7 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -51,6 +49,7 @@ public class NatsJetStreamSourceTest extends TestBase {
                     .consumer(consumerName)
                     .stream(streamName)
                     .batchSize(5)
+                    .maxWait(Duration.ofSeconds(10))  // Set maxWait to 10 seconds for testing
                     .build();
             NatsJetStreamSourceBuilder<String> builder = new NatsJetStreamSourceBuilder<String>()
                     .subjects(sourceSubject1)
@@ -93,7 +92,11 @@ public class NatsJetStreamSourceTest extends TestBase {
             StringPayloadDeserializer deserializer = new StringPayloadDeserializer();
             Properties connectionProperties = defaultConnectionProperties(url);
             NatsConsumeOptions consumerConfig = new NatsConsumeOptions.Builder()
-                    .consumer(consumerName).stream(streamName).batchSize(5).build();
+                    .consumer(consumerName)
+                    .stream(streamName)
+                    .batchSize(5)
+                    .maxWait(Duration.ofSeconds(10))  // Set maxWait to 10 seconds for testing
+                    .build();
             NatsJetStreamSourceBuilder<String> builder = new NatsJetStreamSourceBuilder<String>()
                     .subjects(sourceSubject).payloadDeserializer(deserializer)
                     .boundedness(Boundedness.CONTINUOUS_UNBOUNDED).consumerConfig(consumerConfig);

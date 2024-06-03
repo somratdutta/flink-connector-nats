@@ -6,6 +6,7 @@ package io.synadia.flink.source;
 import io.synadia.flink.Utils;
 import io.synadia.flink.common.NatsSinkOrSourceBuilder;
 import io.synadia.flink.payload.PayloadDeserializer;
+import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
 import org.apache.flink.api.connector.source.Boundedness;
@@ -69,7 +70,7 @@ public class NatsJetStreamSourceBuilder<OutputT> extends NatsSinkOrSourceBuilder
     }
 
     /**
-     * Build a NatsSource. Subject and
+     * Build a NatsSource.
      * @return the source
      */
     public NatsJetStreamSource<OutputT> build() {
