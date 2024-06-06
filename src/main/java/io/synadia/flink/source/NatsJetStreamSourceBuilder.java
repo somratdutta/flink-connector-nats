@@ -52,7 +52,7 @@ public class NatsJetstreamSourceBuilder<OutputT> {
     }
 
     /**
-     * Build a NatsSource. Subject and
+     * Build a NatsSource.
      * @return the source
      */
     public NatsJetstreamSource<OutputT> build() {

@@ -12,7 +12,7 @@ import io.synadia.flink.source.enumerator.NatsSourceEnumerator;
 import io.synadia.flink.source.split.NatsSubjectCheckpointSerializer;
 import io.synadia.flink.source.split.NatsSubjectSplit;
 import io.synadia.flink.source.split.NatsSubjectSplitSerializer;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
+import io.synadia.flink.payload.PayloadDeserializer;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.connector.source.*;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
@@ -39,7 +39,7 @@ public class NatsJetStreamSource<OutputT> implements Source<OutputT, NatsSubject
 
     @Override
     public TypeInformation<OutputT> getProducedType() {
-        return this.deserializationSchema.getProducedType();
+        return payloadDeserializer.getProducedType();
     }
 
     @Override
