@@ -42,7 +42,7 @@ public class NatsJetStreamSourceReader<OutputT> implements SourceReader<OutputT,
     private final Boundedness mode;
     public NatsJetStreamSourceReader(String sourceId,
                                      ConnectionFactory connectionFactory,
-                                     NatsConsumeOptions NatsConsumeOptions,
+                                     NatsConsumeOptions natsConsumeOptions,
                                      PayloadDeserializer<OutputT> payloadDeserializer,
                                      SourceReaderContext readerContext,
                                      String subject,
@@ -53,7 +53,7 @@ public class NatsJetStreamSourceReader<OutputT> implements SourceReader<OutputT,
         this.readerContext = checkNotNull(readerContext);
         subbedSplits = new ArrayList<>();
         messages = new FutureCompletingBlockingQueue<>();
-        this.config = NatsConsumeOptions;
+        this.config = natsConsumeOptions;
         this.subject = subject;
         this.mode = mode;
     }
