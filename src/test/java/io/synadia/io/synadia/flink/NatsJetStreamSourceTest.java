@@ -6,7 +6,7 @@ package io.synadia.io.synadia.flink;
 import io.nats.client.JetStream;
 import io.nats.client.JetStreamManagement;
 import io.nats.client.api.*;
-import io.synadia.flink.source.NatsConsumeOptions;
+import io.nats.client.support.SerializableConsumerConfiguration;
 import io.synadia.flink.source.NatsJetStreamSource;
 import io.synadia.flink.source.NatsJetStreamSourceBuilder;
 import io.synadia.flink.payload.StringPayloadDeserializer;
@@ -38,7 +38,11 @@ public class NatsJetStreamSourceTest extends TestBase {
             nc.jetStreamManagement().addStream(stream);
 
             // Create and configure a consumer
-            ConsumerConfiguration cc = ConsumerConfiguration.builder().durable(consumerName).ackPolicy(AckPolicy.All).filterSubject(sourceSubject1).build();
+            ConsumerConfiguration cc = ConsumerConfiguration.builder()
+                    .durable(consumerName)
+                    .ackPolicy(AckPolicy.All)
+                    .filterSubject(sourceSubject1)
+                    .build();
             nc.jetStreamManagement().addOrUpdateConsumer(streamName, cc);
 
             // Publish messages
@@ -48,12 +52,7 @@ public class NatsJetStreamSourceTest extends TestBase {
             // --------------------------------------------------------------------------------
             Properties connectionProperties = defaultConnectionProperties(url);
             StringPayloadDeserializer deserializer = new StringPayloadDeserializer();
-            NatsConsumeOptions consumerConfig = new NatsConsumeOptions.Builder()
-                    .consumer(consumerName)
-                    .stream(streamName)
-                    .batchSize(5)
-                    .maxWait(Duration.ofSeconds(10))  // Set maxWait to 10 seconds for testing
-                    .build();
+            SerializableConsumerConfiguration consumerConfig = new SerializableConsumerConfiguration(cc);
             NatsJetStreamSourceBuilder<String> builder = new NatsJetStreamSourceBuilder<String>()
                     .subjects(sourceSubject1)
                     .payloadDeserializer(deserializer)
@@ -87,19 +86,16 @@ public class NatsJetStreamSourceTest extends TestBase {
                     .name(streamName).subjects(sourceSubject).build();
             jsm.addStream(streamConfig);
             ConsumerConfiguration cc = ConsumerConfiguration.builder()
-                    .durable(consumerName).ackPolicy(AckPolicy.All).filterSubject(sourceSubject).build();
+                    .durable(consumerName)
+                    .ackPolicy(AckPolicy.All)
+                    .filterSubject(sourceSubject).build();
             jsm.addOrUpdateConsumer(streamName, cc);
 
             // Flink environment setup
             StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
             StringPayloadDeserializer deserializer = new StringPayloadDeserializer();
             Properties connectionProperties = defaultConnectionProperties(url);
-            NatsConsumeOptions consumerConfig = new NatsConsumeOptions.Builder()
-                    .consumer(consumerName)
-                    .stream(streamName)
-                    .batchSize(5)
-                    .maxWait(Duration.ofSeconds(10))  // Set maxWait to 10 seconds for testing
-                    .build();
+            SerializableConsumerConfiguration consumerConfig = new SerializableConsumerConfiguration(cc);
             NatsJetStreamSourceBuilder<String> builder = new NatsJetStreamSourceBuilder<String>()
                     .subjects(sourceSubject).payloadDeserializer(deserializer)
                     .boundedness(Boundedness.CONTINUOUS_UNBOUNDED).consumerConfig(consumerConfig);
