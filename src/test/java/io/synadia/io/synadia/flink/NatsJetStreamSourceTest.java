@@ -45,6 +45,7 @@ public class NatsJetStreamSourceTest extends TestBase {
                     .durable(consumerName)
                     .ackPolicy(AckPolicy.All)
                     .filterSubject(sourceSubject1)
+                    .maxBatch(5)
                     .build();
             nc.jetStreamManagement().addOrUpdateConsumer(streamName, cc);
 
@@ -69,8 +70,8 @@ public class NatsJetStreamSourceTest extends TestBase {
             DataStream<String> ds = env.fromSource(natsSource, WatermarkStrategy.noWatermarks(), "nats-flink-bounded");
             ds.map(String::toUpperCase); // To Avoid Sink Dependency
             env.setRestartStrategy(RestartStrategies.fixedDelayRestart(5, Time.seconds(5)));
-            env.executeAsync("nats-flink");
-            Thread.sleep(5000);
+            env.executeAsync();
+            Thread.sleep(15000);
             env.close();
             SequenceInfo sequenceInfo = nc.jetStream().getConsumerContext(sourceSubject1, consumerName).getConsumerInfo().getDelivered();
             assertTrue(sequenceInfo.getStreamSequence() >= 2);
@@ -95,6 +96,7 @@ public class NatsJetStreamSourceTest extends TestBase {
                     .durable(consumerName)
                     .ackPolicy(AckPolicy.All)
                     .filterSubject(sourceSubject)
+                    .maxBatch(5)
                     .build();
             jsm.addOrUpdateConsumer(streamName, cc);
 

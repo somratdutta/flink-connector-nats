@@ -67,7 +67,6 @@ public class NatsJetStreamSourceReader<OutputT> implements SourceReader<OutputT,
             connection = connectionFactory.connect();
             js = connection.jetStream();
             PullSubscribeOptions pullOptions = PullSubscribeOptions.builder()
-                    .bind(true)
                     .durable(config.getConsumerConfiguration().getDurable())
                     .build();
             subscription = js.subscribe(subject, pullOptions);
