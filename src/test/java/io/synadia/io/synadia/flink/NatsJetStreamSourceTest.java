@@ -40,7 +40,10 @@ public class NatsJetStreamSourceTest extends TestBase {
         runInExternalServer(true, (nc, url) -> {
 
             // publish to the source's subjects
-            StreamConfiguration stream = new StreamConfiguration.Builder().name(streamName).subjects(sourceSubject1).build();
+            StreamConfiguration stream = new StreamConfiguration.Builder()
+                    .name(streamName)
+                    .subjects(sourceSubject1)
+                    .build();
             nc.jetStreamManagement().addStream(stream);
             ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder()
                             .durable(consumerName).ackPolicy(AckPolicy.All)
@@ -90,22 +93,24 @@ public class NatsJetStreamSourceTest extends TestBase {
             // NATS setup
             JetStreamManagement jsm = nc.jetStreamManagement();
             StreamConfiguration streamConfig = StreamConfiguration.builder()
-                    .name(streamName).subjects(sourceSubject).build();
+                    .name(streamName)
+                    .subjects(sourceSubject)
+                    .build();
             jsm.addStream(streamConfig);
             ConsumerConfiguration cc = ConsumerConfiguration.builder()
-                    .durable(consumerName).ackPolicy(AckPolicy.All).filterSubject(sourceSubject).build();
+                    .durable(consumerName)
+                    .ackPolicy(AckPolicy.All)
+                    .filterSubject(sourceSubject)
+                    .maxBatch(5)
+                    .build();
             jsm.addOrUpdateConsumer(streamName, cc);
 
             // Flink environment setup
             StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
             StringPayloadDeserializer deserializer = new StringPayloadDeserializer();
             Properties connectionProperties = defaultConnectionProperties(url);
-            NatsConsumeOptions consumerConfig = new NatsConsumeOptions.Builder()
-                    .consumer(consumerName)
-                    .stream(streamName)
-                    .batchSize(5)
-                    .maxWait(Duration.ofSeconds(10))  // Set maxWait to 10 seconds for testing
-                    .build();
+            SerializableConsumerConfiguration consumerConfig = new SerializableConsumerConfiguration(cc);
+
             NatsJetStreamSourceBuilder<String> builder = new NatsJetStreamSourceBuilder<String>()
                     .subjects(sourceSubject).payloadDeserializer(deserializer)
                     .boundedness(Boundedness.CONTINUOUS_UNBOUNDED).consumerConfig(consumerConfig);

@@ -46,11 +46,6 @@ public class NatsJetstreamSourceBuilder<OutputT> {
         return this;
     }
 
-    public NatsJetStreamSourceBuilder<OutputT> boundedness(Boundedness mode) {
-        this.mode = mode;
-        return this;
-    }
-
     /**
      * Build a NatsSource.
      * @return the source
