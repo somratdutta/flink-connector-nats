@@ -3,8 +3,11 @@
 
 package io.synadia.flink.source.js;
 
+import io.nats.client.NUID;
 import io.synadia.flink.Utils;
 import io.synadia.flink.common.ConnectionFactory;
+import io.synadia.flink.payload.PayloadDeserializer;
+import io.synadia.flink.source.SourceConfiguration;
 import io.synadia.flink.source.enumerator.NatsSourceEnumerator;
 import io.synadia.flink.source.split.NatsSubjectCheckpointSerializer;
 import io.synadia.flink.source.split.NatsSubjectSplit;
@@ -27,20 +30,13 @@ import org.slf4j.LoggerFactory;
 
 public class NatsJetstreamSource<OutputT> implements Source<OutputT, NatsSubjectSplit, Collection<NatsSubjectSplit>>, ResultTypeQueryable<OutputT> {
 
-    private final ConnectionFactory connectionFactory;
-    private final String natsSubject;
-    private final DeserializationSchema<OutputT> deserializationSchema;
-    private final NatsConsumerConfig config;
+    private final PayloadDeserializer<OutputT> deserializationSchema;
     private static final Logger LOG = LoggerFactory.getLogger(NatsJetstreamSource.class);
-    private final String id;
+
 
     // Package-private constructor to ensure usage of the Builder for object creation
-    NatsJetstreamSource(DeserializationSchema<OutputT> deserializationSchema, ConnectionFactory connectionFactory, String natsSubject, NatsConsumerConfig config) {
-        id = Utils.generateId();
+    NatsJetstreamSource(PayloadDeserializer<OutputT> deserializationSchema) {
         this.deserializationSchema = deserializationSchema;
-        this.connectionFactory = connectionFactory;
-        this.natsSubject = natsSubject;
-        this.config = config;
     }
 
     @Override
@@ -56,9 +52,8 @@ public class NatsJetstreamSource<OutputT> implements Source<OutputT, NatsSubject
     @Override
     public SplitEnumerator<NatsSubjectSplit, Collection<NatsSubjectSplit>> createEnumerator(
             SplitEnumeratorContext<NatsSubjectSplit> enumContext) throws Exception {
-        LOG.debug("{} | createEnumerator", id);
         List<NatsSubjectSplit> list = new ArrayList<>();
-        list.add(new NatsSubjectSplit(natsSubject));
+        list.add(new NatsSubjectSplit("test"));
         return restoreEnumerator(enumContext, list);
     }
 
@@ -66,35 +61,22 @@ public class NatsJetstreamSource<OutputT> implements Source<OutputT, NatsSubject
     public SplitEnumerator<NatsSubjectSplit, Collection<NatsSubjectSplit>> restoreEnumerator(
             SplitEnumeratorContext<NatsSubjectSplit> enumContext, Collection<NatsSubjectSplit> checkpoint)
             throws Exception {
-        LOG.debug("{} | restoreEnumerator", id);
-        return new NatsSourceEnumerator(id, enumContext, checkpoint);
+        return new NatsSourceEnumerator(NUID.nextGlobal(), enumContext, checkpoint);
     }
 
     @Override
     public SimpleVersionedSerializer<NatsSubjectSplit> getSplitSerializer() {
-        LOG.debug("{} | getSplitSerializer", id);
         return new NatsSubjectSplitSerializer();
     }
 
     @Override
     public SimpleVersionedSerializer<Collection<NatsSubjectSplit>> getEnumeratorCheckpointSerializer() {
-        LOG.debug("{} | getEnumeratorCheckpointSerializer", id);
         return new NatsSubjectCheckpointSerializer();
     }
 
     @Override
     public SourceReader<OutputT, NatsSubjectSplit> createReader(SourceReaderContext readerContext) throws Exception {
-        LOG.debug("{} | createReader", id);
-        return new NatsJetstreamSourceReader<>(id, connectionFactory, config, deserializationSchema, readerContext, natsSubject);
+        return NatsJetstreamSourceReader.create(new SourceConfiguration(), deserializationSchema, readerContext);
     }
 
-    @Override
-    public String toString() {
-        return "NatsSource{" +
-                "id='" + id + '\'' +
-                ", subjects=" + natsSubject +
-                ", payloadDeserializer=" + deserializationSchema.getClass().getCanonicalName() +
-                ", connectionFactory=" + connectionFactory +
-                '}';
-    }
 }

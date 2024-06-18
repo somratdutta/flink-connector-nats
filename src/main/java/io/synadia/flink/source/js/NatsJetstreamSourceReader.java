@@ -3,156 +3,185 @@
 
 package io.synadia.flink.source.js;
 
-import static org.apache.flink.util.Preconditions.checkNotNull;
 import io.nats.client.Connection;
-import io.nats.client.JetStream;
-import io.nats.client.JetStreamApiException;
-import io.nats.client.JetStreamSubscription;
 import io.nats.client.Message;
-import io.nats.client.PullSubscribeOptions;
-import io.nats.client.Subscription;
-import io.nats.client.api.AckPolicy;
-import io.nats.client.api.ConsumerConfiguration;
-import io.synadia.flink.Utils;
-import io.synadia.flink.common.ConnectionFactory;
+import io.nats.client.Nats;
+import io.synadia.flink.payload.PayloadDeserializer;
+import io.synadia.flink.payload.StringPayloadDeserializer;
+import io.synadia.flink.source.SourceConfiguration;
 import io.synadia.flink.source.split.NatsSubjectSplit;
-import java.io.IOException;
-import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.connector.source.ReaderOutput;
-import org.apache.flink.api.connector.source.SourceEvent;
-import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.api.connector.source.SourceReaderContext;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
+import org.apache.flink.connector.base.source.reader.SourceReaderBase;
+import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.synchronization.FutureCompletingBlockingQueue;
 import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.util.FlinkRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NatsJetstreamSourceReader<OutputT> implements SourceReader<OutputT, NatsSubjectSplit> {
+public class NatsJetstreamSourceReader<OutputT> extends SourceReaderBase<
+        Message, OutputT, NatsSubjectSplit, NatsSubjectSplitState> {
 
     private static final Logger LOG = LoggerFactory.getLogger(NatsJetstreamSourceReader.class);
 
-    private final String id;
-    private final ConnectionFactory connectionFactory;
-    private final DeserializationSchema<OutputT> payloadDeserializer;
-    private final SourceReaderContext readerContext;
-    private final List<NatsSubjectSplit> subbedSplits;
-    private final FutureCompletingBlockingQueue<Message> messages;
     private Connection connection;
-    private Subscription subscription;
-    private NatsConsumerConfig config;
-    private JetStream js;
-    private String subject;
-    public NatsJetstreamSourceReader(String sourceId,
-                            ConnectionFactory connectionFactory,
-                            NatsConsumerConfig natsConsumerConfig,
-                            DeserializationSchema<OutputT> payloadDeserializer,
-                            SourceReaderContext readerContext,
-                                     String subject) {
-        id = sourceId + "-" + Utils.generatePrefixedId(sourceId);
-        this.connectionFactory = connectionFactory;
-        this.payloadDeserializer = payloadDeserializer;
-        this.readerContext = checkNotNull(readerContext);
-        subbedSplits = new ArrayList<>();
-        messages = new FutureCompletingBlockingQueue<>();
-        this.config= natsConsumerConfig;
-        this.subject = subject;
+    private final AtomicReference<Throwable> cursorCommitThrowable;
+    @VisibleForTesting
+    final SortedMap<Long, Map<String, List<Message>>> cursorsToCommit;
+    private final ConcurrentMap<String, List<Message>> cursorsOfFinishedSplits;
+
+    public NatsJetstreamSourceReader(FutureCompletingBlockingQueue<RecordsWithSplitIds<Message>> elementsQueue,
+                            NatsSourceFetcherManager fetcherManager,
+                                     PayloadDeserializer<OutputT> deserializationSchema,
+                            Configuration configuration,
+                            Connection connection,
+                            SourceReaderContext readerContext
+                                     ) {
+        super(elementsQueue, fetcherManager, new NatsRecordEmitter<>(deserializationSchema), configuration, readerContext);
+
+        this.connection = connection;
+        this.cursorsToCommit = Collections.synchronizedSortedMap(new TreeMap<>());
+        this.cursorsOfFinishedSplits = new ConcurrentHashMap<>();
+        this.cursorCommitThrowable = new AtomicReference<>();
     }
 
 
     @Override
     public void start() {
-        LOG.debug("{} | start", id);
-        try {
-            connection = connectionFactory.connect();
-            js = connection.jetStream();
-            PullSubscribeOptions pullOptions = PullSubscribeOptions.builder().bind(true)
-                    .durable(config.getConsumerName()).stream(config.getStreamName())
-                    .build();
-            subscription = js.subscribe(subject, pullOptions);
-        }
-        catch (IOException e) {
-            throw new FlinkRuntimeException(e);
-        } catch (JetStreamApiException e) {
-            e.printStackTrace();
-        }
+        super.start();
+
     }
 
     @Override
     public InputStatus pollNext(ReaderOutput<OutputT> output) throws Exception {
-        List<Message> messages =
-                ((JetStreamSubscription) subscription).fetch(config.getBatchSize(), Duration.ofSeconds(5));
-        for (int i = 0; i < messages.size(); i++) {
-            Message message = messages.get(i);
-            boolean ackMessageFlag = (i == messages.size() - 1);
-            processMessage(output, message, ackMessageFlag);
+        Throwable cause = cursorCommitThrowable.get();
+        if (cause != null) {
+            throw new FlinkRuntimeException("An error occurred in acknowledge message.", cause);
         }
-        InputStatus is = messages.isEmpty() ? InputStatus.NOTHING_AVAILABLE : InputStatus.MORE_AVAILABLE;
-        LOG.debug("{} | pollNext had message, then {}", id, is);
-        return is;
+
+        return super.pollNext(output);
     }
 
-    private void processMessage(ReaderOutput<OutputT> readerOutput, Message message, boolean ackMessage) throws IOException {
+    @Override
+    public void notifyCheckpointComplete(long checkpointId) throws Exception {
+        LOG.debug("Committing cursors for checkpoint {}", checkpointId);
+        Map<String, List<Message>> cursors = cursorsToCommit.get(checkpointId); //TODO convert string to Subject Class
         try {
-            OutputT data = payloadDeserializer.deserialize(message.getData());
-            readerOutput.collect(data);
-            if (ackMessage) {
-                message.ack();
-            }
+            ((NatsSourceFetcherManager) splitFetcherManager).acknowledgeMessages(cursors);
+            LOG.debug("Successfully acknowledge cursors for checkpoint {}", checkpointId);
+
+            // Clean up the cursors.
+            cursorsOfFinishedSplits.keySet().removeAll(cursors.keySet());
+            cursorsToCommit.headMap(checkpointId + 1).clear();
         } catch (Exception e) {
-            throw e;
+            LOG.error("Failed to acknowledge cursors for checkpoint {}", checkpointId, e);
+            cursorCommitThrowable.compareAndSet(null, e);
         }
     }
 
     @Override
     public List<NatsSubjectSplit> snapshotState(long checkpointId) {
-        LOG.debug("{} | snapshotState", id);
-        return Collections.unmodifiableList(subbedSplits);
-    }
+        List<NatsSubjectSplit> splits = super.snapshotState(checkpointId);
 
-    @Override
-    public CompletableFuture<Void> isAvailable() {
-        return messages.getAvailabilityFuture();
-    }
-
-    @Override
-    public void addSplits(List<NatsSubjectSplit> splits) {
+        // Perform a snapshot for these splits.
+        Map<String, List<Message>> cursors =
+                cursorsToCommit.computeIfAbsent(checkpointId, id -> new HashMap<>());
+        // Put the cursors of the active splits.
         for (NatsSubjectSplit split : splits) {
-            LOG.debug("{} | addSplits {}", id, split);
-            int ix = subbedSplits.indexOf(split);
-            if (ix == -1) {
-                subbedSplits.add(split);
-            }
+            cursors.put(split.getSubject(), split.getLastConsumedSequenceId());
         }
-    }
+        // Put cursors of all the finished splits.
+        cursors.putAll(cursorsOfFinishedSplits);
 
-    @Override
-    public void notifyNoMoreSplits() {
-        LOG.debug("{} | notifyNoMoreSplits", id);
+        return splits;
     }
-
     @Override
     public void close() throws Exception {
-        LOG.debug("{} | close", id);
-        subscription.unsubscribe();
+        //TODO Review this again and remove TODO
+        super.close();
         connection.close();
     }
 
     @Override
-    public void handleSourceEvents(SourceEvent sourceEvent) {
-        LOG.debug("{} | handleSourceEvents {}", id, sourceEvent);
+    public void addSplits(List<NatsSubjectSplit> splits) {
+        super.addSplits(splits);
     }
 
     @Override
-    public String toString() {
-        return "NatsJetstreamSourceReader{" +
-                "id='" + id + '\'' +
-                ", subbedSplits=" + subbedSplits +
-                '}';
+    protected void onSplitFinished(Map<String, NatsSubjectSplitState> finishedSplitIds) {
+// Close all the finished splits.
+        for (String splitId : finishedSplitIds.keySet()) {
+            ((NatsSourceFetcherManager) splitFetcherManager).closeFetcher(splitId);
+        }
+
+        // We don't require new splits, all the splits are pre-assigned by source enumerator.
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("onSplitFinished event: {}", finishedSplitIds);
+        }
+
+        for (Map.Entry<String, NatsSubjectSplitState> entry : finishedSplitIds.entrySet()) {
+            NatsSubjectSplitState state = entry.getValue();
+            cursorsOfFinishedSplits.put(state.getSplit().splitId(), state.getSplit().getLastConsumedSequenceId());
+        }
+    }
+
+    @Override
+    protected NatsSubjectSplitState initializedState(NatsSubjectSplit natsSubjectSplit) {
+        return new NatsSubjectSplitState(natsSubjectSplit);
+    }
+
+    @Override
+    protected NatsSubjectSplit toSplitType(String s, NatsSubjectSplitState natsSubjectSplitState) {
+        return natsSubjectSplitState.toNatsSubjectSplit();
+    }
+
+    /** Factory method for creating PulsarSourceReader. */
+    public static <OutputT> NatsJetstreamSourceReader<OutputT> create(
+            SourceConfiguration sourceConfiguration,
+            PayloadDeserializer deserializationSchema,
+            SourceReaderContext readerContext)
+            throws Exception {
+
+        // Create a message queue with the predefined source option.
+        int queueCapacity = sourceConfiguration.getMessageQueueCapacity();
+        FutureCompletingBlockingQueue<RecordsWithSplitIds<Message>> elementsQueue =
+                new FutureCompletingBlockingQueue<>(queueCapacity);
+
+        Connection connection = Nats.connect();
+
+        // Initialize the deserialization schema before creating the nats reader.
+
+        // Create an ordered split reader supplier.
+        Supplier<SplitReader<Message, NatsSubjectSplit>> splitReaderSupplier =
+                () ->
+                        new NatsSubjectSplitReader(
+                                connection,
+                                sourceConfiguration);
+
+        NatsSourceFetcherManager fetcherManager =
+                new NatsSourceFetcherManager(
+                        elementsQueue, splitReaderSupplier, readerContext.getConfiguration());
+
+        return new NatsJetstreamSourceReader(
+                elementsQueue,
+                fetcherManager,
+                deserializationSchema,
+                readerContext.getConfiguration(),
+                connection,
+                readerContext);
     }
 }
