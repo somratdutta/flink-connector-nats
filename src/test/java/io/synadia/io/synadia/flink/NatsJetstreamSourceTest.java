@@ -33,7 +33,7 @@ public class NatsJetstreamSourceTest extends TestBase{
     public void testSource() throws Exception {
         String sourceSubject1 = "test";
         String streamName = "test";
-        String consumerName = "testconsumer";
+        String consumerName = "Test";
 
         runInExternalServer(true, (nc, url) -> {
 
@@ -43,7 +43,7 @@ public class NatsJetstreamSourceTest extends TestBase{
             ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder()
                             .durable(consumerName).ackPolicy(AckPolicy.All)
                             .filterSubject(sourceSubject1).build();
-            //nc.jetStreamManagement().addOrUpdateConsumer(streamName, consumerConfiguration);
+            nc.jetStreamManagement().addOrUpdateConsumer(streamName, consumerConfiguration);
             nc.jetStream().publish(sourceSubject1, "Hi".getBytes());
             nc.jetStream().publish(sourceSubject1, "Hello".getBytes());
 
@@ -53,7 +53,10 @@ public class NatsJetstreamSourceTest extends TestBase{
             NatsConsumerConfig consumerConfig = new NatsConsumerConfig.Builder().withConsumerName(consumerName).
                     withBatchSize(5).withStreamName(streamName).build();
             NatsJetstreamSourceBuilder<String> builder = new NatsJetstreamSourceBuilder<String>()
-                    .payloadDeserializer(deserializer);
+                    .setDeserializationSchema(deserializer)
+                    .setCc(consumerConfiguration)
+                    .setNatsUrl("localhost:4222")
+                    .setSubject(sourceSubject1);
 
             NatsJetstreamSource<String> natsSource = builder.build();
             StreamExecutionEnvironment env = getStreamExecutionEnvironment();

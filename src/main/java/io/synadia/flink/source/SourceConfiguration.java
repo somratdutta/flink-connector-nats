@@ -1,18 +1,24 @@
 package io.synadia.flink.source;
 
+import io.nats.client.api.ConsumerConfiguration;
+import io.synadia.flink.source.js.NatsJetstreamSourceOptions;
 import java.time.Duration;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.connector.base.source.reader.SourceReaderOptions;
 
-public class SourceConfiguration {
+public class SourceConfiguration extends Configuration {
 
     private static final long serialVersionUID = 8488507275800787580L;
 
     private  int messageQueueCapacity;
     private  boolean enableAutoAcknowledgeMessage;
-    private  long autoCommitCursorInterval;
-    private  int fetchOneMessageTime;
+    private  Duration fetchOneMessageTime;
     private  Duration maxFetchTime;
     private  int maxFetchRecords;
     private  String consumerName;
+    private String subjectName;
+    private String url;
+    private Duration natsAutoAckInterval;
 
 
     /**
@@ -23,11 +29,20 @@ public class SourceConfiguration {
      */
     //TODO Pick from client provided configuration
     public SourceConfiguration() {
-        messageQueueCapacity = 100;
-        maxFetchTime = Duration.ofMillis(5);
-        maxFetchRecords = 100;
-        consumerName = "Test";
-        fetchOneMessageTime = 1000;
+        messageQueueCapacity = get(SourceReaderOptions.ELEMENT_QUEUE_CAPACITY);
+        maxFetchTime = get(NatsJetstreamSourceOptions.NATS_FETCH_TIMEOUT);
+        maxFetchRecords = get(NatsJetstreamSourceOptions.NATS_CONSUMER_MAX_FETCH_RECORD);;
+        fetchOneMessageTime = get(NatsJetstreamSourceOptions.NATS_CONSUMER_FETCH_ONE_MESSAGE_TIME);
+        natsAutoAckInterval = get(NatsJetstreamSourceOptions.NATS_AUTO_ACK_INTERVAL);
+        enableAutoAcknowledgeMessage = get(NatsJetstreamSourceOptions.ENABLE_AUTO_ACK);
+    }
+
+    public SourceConfiguration(String subject, String url, ConsumerConfiguration consumerConfiguration) {
+        this();
+        this.consumerName = consumerConfiguration.getDurable();
+        this.url = url;
+        this.subjectName = subject;
+
     }
 
     public int getMessageQueueCapacity() {
@@ -38,11 +53,7 @@ public class SourceConfiguration {
         return enableAutoAcknowledgeMessage;
     }
 
-    public long getAutoCommitCursorInterval() {
-        return autoCommitCursorInterval;
-    }
-
-    public int getFetchOneMessageTime() {
+    public Duration getFetchOneMessageTime() {
         return fetchOneMessageTime;
     }
 
@@ -57,4 +68,17 @@ public class SourceConfiguration {
     public String getConsumerName() {
         return consumerName;
     }
+
+    public String getSubjectName() {
+        return subjectName;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public Duration getNatsAutoAckInterval() {
+        return natsAutoAckInterval;
+    }
+
 }

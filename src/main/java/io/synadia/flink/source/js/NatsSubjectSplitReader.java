@@ -5,9 +5,11 @@ import io.nats.client.Consumer;
 import io.nats.client.JetStreamSubscription;
 import io.nats.client.Message;
 import io.nats.client.PullSubscribeOptions;
+import io.nats.client.api.AckPolicy;
 import io.synadia.flink.source.SourceConfiguration;
 import io.synadia.flink.source.split.NatsSubjectSplit;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -17,6 +19,7 @@ import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
+import org.apache.flink.shaded.guava30.com.google.common.collect.Lists;
 import org.apache.flink.util.FlinkRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,12 +59,12 @@ public class NatsSubjectSplitReader
              messageNum < sourceConfiguration.getMaxFetchRecords() && deadline.hasTimeLeft();
              messageNum++) {
             try {
-                int fetchTime = sourceConfiguration.getFetchOneMessageTime();
-                if (fetchTime <= 0) {
-                    fetchTime = (int) deadline.timeLeftIfAny().toMillis();
+                Duration fetchTime = sourceConfiguration.getFetchOneMessageTime();
+                if (fetchTime == null) {
+                    fetchTime = Duration.ofMillis(deadline.timeLeftIfAny().toMillis());
                 }
 
-                List<Message> messages = jetStreamSubscription.fetch(1, TimeUnit.MILLISECONDS.toMillis(fetchTime));
+                List<Message> messages = jetStreamSubscription.fetch(1, fetchTime);
                 if (messages.isEmpty()) {
                     builder.addFinishedSplit(splitId);
                     break;
@@ -139,12 +142,19 @@ public class NatsSubjectSplitReader
         }
     }
 
-    public void notifyCheckpointComplete(String subject, Message offsetsToCommit)
+    public void notifyCheckpointComplete(String subject, List<Message> messages)
             throws Exception { //TODO Throw nats exception
         if (jetStreamSubscription == null) {
             this.jetStreamSubscription = createJetstreamSubscription(subject);
         }
-        offsetsToCommit.ack();
+        //Handle specially for cumulative ack
+        if (jetStreamSubscription.getConsumerInfo().getConsumerConfiguration().getAckPolicy() == AckPolicy.All)
+        {
+            List<Message> reversed = Lists.reverse(messages);
+            reversed.get(0).ack();
+        }else {
+            messages.forEach(message -> message.ack());
+        }
     }
 
     // --------------------------- Helper Methods -----------------------------
@@ -154,6 +164,7 @@ public class NatsSubjectSplitReader
             throws Exception {
         PullSubscribeOptions pullOptions = PullSubscribeOptions.builder()
                 .durable(sourceConfiguration.getConsumerName())
+
                 .build();
         JetStreamSubscription subscription = connection.jetStream().subscribe(subject, pullOptions);
         return subscription;

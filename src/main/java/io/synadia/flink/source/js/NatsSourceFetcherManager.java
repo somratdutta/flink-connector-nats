@@ -14,6 +14,7 @@ import org.apache.flink.connector.base.source.reader.fetcher.SplitFetcher;
 import org.apache.flink.connector.base.source.reader.fetcher.SplitFetcherManager;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.synchronization.FutureCompletingBlockingQueue;
+import org.apache.flink.shaded.curator5.org.apache.curator.shaded.com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,22 +85,20 @@ public class NatsSourceFetcherManager extends SplitFetcherManager<Message, NatsS
 
         for (Map.Entry<String, List<Message>> entry : cursorsToCommit.entrySet()) {
             String partition = entry.getKey();
-            for (Message message : entry.getValue()) {
-                SplitFetcher<Message, NatsSubjectSplit> fetcher =
-                        getOrCreateFetcher(partition.toString());
-                triggerAcknowledge(fetcher, partition, message);
-            }
+            SplitFetcher<Message, NatsSubjectSplit> fetcher =
+                    getOrCreateFetcher(partition);
+            triggerAcknowledge(fetcher, partition, entry.getValue());
         }
     }
 
     private void triggerAcknowledge(
             SplitFetcher<Message, NatsSubjectSplit> splitFetcher,
             String partition,
-            Message messageId)
+            List<Message> messages)
             throws Exception { //TODO Change to nats specific exception
         NatsSubjectSplitReader splitReader =
                 (NatsSubjectSplitReader) splitFetcher.getSplitReader();
-        splitReader.notifyCheckpointComplete(partition, messageId);
+        splitReader.notifyCheckpointComplete(partition, messages);
         startFetcher(splitFetcher);
     }
 

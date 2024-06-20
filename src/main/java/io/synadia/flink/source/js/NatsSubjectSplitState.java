@@ -11,7 +11,7 @@ public class NatsSubjectSplitState {
     }
 
     public NatsSubjectSplit toNatsSubjectSplit() {
-        return new NatsSubjectSplit(split.getSubject(),split.getLastConsumedSequenceId());
+        return new NatsSubjectSplit(split.getSubject(),split.getCurrentMessages());
     }
 
     public NatsSubjectSplit getSplit() {

@@ -32,11 +32,13 @@ public class NatsJetstreamSource<OutputT> implements Source<OutputT, NatsSubject
 
     private final PayloadDeserializer<OutputT> deserializationSchema;
     private static final Logger LOG = LoggerFactory.getLogger(NatsJetstreamSource.class);
+    private SourceConfiguration sourceConfiguration;
 
 
     // Package-private constructor to ensure usage of the Builder for object creation
-    NatsJetstreamSource(PayloadDeserializer<OutputT> deserializationSchema) {
+    NatsJetstreamSource(PayloadDeserializer<OutputT> deserializationSchema, SourceConfiguration sourceConfiguration) {
         this.deserializationSchema = deserializationSchema;
+        this.sourceConfiguration = sourceConfiguration;
     }
 
     @Override
@@ -53,7 +55,7 @@ public class NatsJetstreamSource<OutputT> implements Source<OutputT, NatsSubject
     public SplitEnumerator<NatsSubjectSplit, Collection<NatsSubjectSplit>> createEnumerator(
             SplitEnumeratorContext<NatsSubjectSplit> enumContext) throws Exception {
         List<NatsSubjectSplit> list = new ArrayList<>();
-        list.add(new NatsSubjectSplit("test"));
+        list.add(new NatsSubjectSplit(sourceConfiguration.getSubjectName()));
         return restoreEnumerator(enumContext, list);
     }
 
@@ -76,7 +78,7 @@ public class NatsJetstreamSource<OutputT> implements Source<OutputT, NatsSubject
 
     @Override
     public SourceReader<OutputT, NatsSubjectSplit> createReader(SourceReaderContext readerContext) throws Exception {
-        return NatsJetstreamSourceReader.create(new SourceConfiguration(), deserializationSchema, readerContext);
+        return NatsJetstreamSourceReader.create(sourceConfiguration, deserializationSchema, readerContext);
     }
 
 }

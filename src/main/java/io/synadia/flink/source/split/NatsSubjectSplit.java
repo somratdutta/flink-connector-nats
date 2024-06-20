@@ -14,17 +14,13 @@ public class NatsSubjectSplit implements SourceSplit {
 
     private List<Message> currentMessages = new ArrayList<>();
 
-    public void setLastConsumedSequenceId(List<Message> lastConsumedSequenceId) {
-        this.currentMessages = lastConsumedSequenceId;
-    }
-
     public NatsSubjectSplit(String subject) {
         this.subject = subject;
     }
 
-    public NatsSubjectSplit(String subject, List<Message> lastConsumedSequence){
+    public NatsSubjectSplit(String subject, List<Message> currentMessages){
         this.subject = subject;
-        this.currentMessages = lastConsumedSequence;
+        this.currentMessages = currentMessages;
     }
 
     /**
@@ -39,7 +35,7 @@ public class NatsSubjectSplit implements SourceSplit {
         return subject;
     }
 
-    public List<Message> getLastConsumedSequenceId(){ return currentMessages; }
+    public List<Message> getCurrentMessages(){ return currentMessages; }
 
     @Override
     public boolean equals(Object o) {

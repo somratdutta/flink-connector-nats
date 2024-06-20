@@ -27,7 +27,7 @@ public class NatsRecordEmitter<OutputT>
 
         // Deserialize the message and since it to output.
         deserializationSchema.getObject(splitState.getSplit().getSubject(),element.getData(), null);
-        splitState.getSplit().getLastConsumedSequenceId().add(element);
+        splitState.getSplit().getCurrentMessages().add(element);
 
         // Release the messages if we use message pool in Pulsar.
         // TODO Check NATS Client once if there is any reference of releasing a message from pool.

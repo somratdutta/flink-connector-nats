@@ -7,7 +7,6 @@ import io.nats.client.Connection;
 import io.nats.client.Message;
 import io.nats.client.Nats;
 import io.synadia.flink.payload.PayloadDeserializer;
-import io.synadia.flink.payload.StringPayloadDeserializer;
 import io.synadia.flink.source.SourceConfiguration;
 import io.synadia.flink.source.split.NatsSubjectSplit;
 import java.util.Collections;
@@ -18,6 +17,9 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.apache.flink.annotation.VisibleForTesting;
@@ -43,16 +45,19 @@ public class NatsJetstreamSourceReader<OutputT> extends SourceReaderBase<
     @VisibleForTesting
     final SortedMap<Long, Map<String, List<Message>>> cursorsToCommit;
     private final ConcurrentMap<String, List<Message>> cursorsOfFinishedSplits;
+    private SourceConfiguration sourceConfiguration;
+
+    private ScheduledExecutorService scheduler;
 
     public NatsJetstreamSourceReader(FutureCompletingBlockingQueue<RecordsWithSplitIds<Message>> elementsQueue,
                             NatsSourceFetcherManager fetcherManager,
                                      PayloadDeserializer<OutputT> deserializationSchema,
-                            Configuration configuration,
+                            SourceConfiguration configuration,
                             Connection connection,
                             SourceReaderContext readerContext
                                      ) {
         super(elementsQueue, fetcherManager, new NatsRecordEmitter<>(deserializationSchema), configuration, readerContext);
-
+        this.sourceConfiguration = configuration;
         this.connection = connection;
         this.cursorsToCommit = Collections.synchronizedSortedMap(new TreeMap<>());
         this.cursorsOfFinishedSplits = new ConcurrentHashMap<>();
@@ -63,6 +68,14 @@ public class NatsJetstreamSourceReader<OutputT> extends SourceReaderBase<
     @Override
     public void start() {
         super.start();
+        if (sourceConfiguration.isEnableAutoAcknowledgeMessage()) {
+            scheduler = Executors.newSingleThreadScheduledExecutor();
+
+            scheduler.scheduleAtFixedRate(this::cumulativeAcknowledgmentMessage,
+                    sourceConfiguration.getMaxFetchTime().toMillis(),
+                    sourceConfiguration.getNatsAutoAckInterval().toMillis(),
+                    TimeUnit.MILLISECONDS);
+        }
 
     }
 
@@ -102,7 +115,7 @@ public class NatsJetstreamSourceReader<OutputT> extends SourceReaderBase<
                 cursorsToCommit.computeIfAbsent(checkpointId, id -> new HashMap<>());
         // Put the cursors of the active splits.
         for (NatsSubjectSplit split : splits) {
-            cursors.put(split.getSubject(), split.getLastConsumedSequenceId());
+            cursors.put(split.getSubject(), split.getCurrentMessages());
         }
         // Put cursors of all the finished splits.
         cursors.putAll(cursorsOfFinishedSplits);
@@ -135,7 +148,7 @@ public class NatsJetstreamSourceReader<OutputT> extends SourceReaderBase<
 
         for (Map.Entry<String, NatsSubjectSplitState> entry : finishedSplitIds.entrySet()) {
             NatsSubjectSplitState state = entry.getValue();
-            cursorsOfFinishedSplits.put(state.getSplit().splitId(), state.getSplit().getLastConsumedSequenceId());
+            cursorsOfFinishedSplits.put(state.getSplit().splitId(), state.getSplit().getCurrentMessages());
         }
     }
 
@@ -149,7 +162,27 @@ public class NatsJetstreamSourceReader<OutputT> extends SourceReaderBase<
         return natsSubjectSplitState.toNatsSubjectSplit();
     }
 
-    /** Factory method for creating PulsarSourceReader. */
+    private void cumulativeAcknowledgmentMessage() {
+        Map<String, List<Message>> cursors = new HashMap<>(cursorsOfFinishedSplits);
+
+        // We reuse snapshotState for acquiring a consume status snapshot.
+        // So the checkpoint didn't really happen, so we just pass a fake checkpoint id.
+        List<NatsSubjectSplit> splits = super.snapshotState(1L);
+        for (NatsSubjectSplit split : splits) {
+                cursors.put(split.getSubject(), split.getCurrentMessages());
+        }
+
+        try {
+            ((NatsSourceFetcherManager) splitFetcherManager).acknowledgeMessages(cursors);
+            // Clean up the finish splits.
+            cursorsOfFinishedSplits.keySet().removeAll(cursors.keySet());
+        } catch (Exception e) {
+            LOG.error("Fail in auto cursor commit.", e);
+            cursorCommitThrowable.compareAndSet(null, e);
+        }
+    }
+
+    /** Factory method for creating NatsJetstreamSourceReader. */
     public static <OutputT> NatsJetstreamSourceReader<OutputT> create(
             SourceConfiguration sourceConfiguration,
             PayloadDeserializer deserializationSchema,
@@ -161,7 +194,7 @@ public class NatsJetstreamSourceReader<OutputT> extends SourceReaderBase<
         FutureCompletingBlockingQueue<RecordsWithSplitIds<Message>> elementsQueue =
                 new FutureCompletingBlockingQueue<>(queueCapacity);
 
-        Connection connection = Nats.connect();
+        Connection connection = Nats.connect(sourceConfiguration.getUrl());
 
         // Initialize the deserialization schema before creating the nats reader.
 
