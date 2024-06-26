@@ -4,15 +4,13 @@
 package io.synadia.flink.source;
 
 import io.nats.client.NUID;
-import io.synadia.flink.Utils;
-import io.synadia.flink.common.ConnectionFactory;
 import io.synadia.flink.payload.PayloadDeserializer;
-import io.synadia.flink.source.SourceConfiguration;
+import io.synadia.flink.source.config.SourceConfiguration;
 import io.synadia.flink.source.enumerator.NatsSourceEnumerator;
+import io.synadia.flink.source.reader.NatsJetstreamSourceReader;
 import io.synadia.flink.source.split.NatsSubjectCheckpointSerializer;
 import io.synadia.flink.source.split.NatsSubjectSplit;
 import io.synadia.flink.source.split.NatsSubjectSplitSerializer;
-import io.synadia.flink.payload.PayloadDeserializer;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.connector.source.*;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;

@@ -1,4 +1,4 @@
-package io.synadia.flink.source;
+package io.synadia.flink.source.reader;
 
 import static java.util.Collections.singletonList;
 import io.nats.client.Message;
@@ -14,7 +14,6 @@ import org.apache.flink.connector.base.source.reader.fetcher.SplitFetcher;
 import org.apache.flink.connector.base.source.reader.fetcher.SplitFetcherManager;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.synchronization.FutureCompletingBlockingQueue;
-import org.apache.flink.shaded.curator5.org.apache.curator.shaded.com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

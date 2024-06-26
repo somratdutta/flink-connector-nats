@@ -1,7 +1,8 @@
-package io.synadia.flink.source;
+package io.synadia.flink.source.reader;
 
 import io.nats.client.Message;
 import io.synadia.flink.payload.PayloadDeserializer;
+import io.synadia.flink.source.split.NatsSubjectSplitState;
 import org.apache.flink.api.connector.source.SourceOutput;
 import org.apache.flink.connector.base.source.reader.RecordEmitter;
 import org.apache.flink.util.Collector;

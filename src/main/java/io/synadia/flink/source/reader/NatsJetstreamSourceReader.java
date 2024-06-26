@@ -1,13 +1,14 @@
 // Copyright (c) 2023 Synadia Communications Inc. All Rights Reserved.
 // See LICENSE and NOTICE file for details.
 
-package io.synadia.flink.source;
+package io.synadia.flink.source.reader;
 
 import io.nats.client.Connection;
 import io.nats.client.Message;
 import io.nats.client.Nats;
 import io.synadia.flink.payload.PayloadDeserializer;
-import io.synadia.flink.source.SourceConfiguration;
+import io.synadia.flink.source.split.NatsSubjectSplitState;
+import io.synadia.flink.source.config.SourceConfiguration;
 import io.synadia.flink.source.split.NatsSubjectSplit;
 import java.util.Collections;
 import java.util.HashMap;
@@ -25,7 +26,6 @@ import java.util.function.Supplier;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.connector.source.ReaderOutput;
 import org.apache.flink.api.connector.source.SourceReaderContext;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.SourceReaderBase;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;

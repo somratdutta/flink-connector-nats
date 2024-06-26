@@ -5,6 +5,7 @@ package io.synadia.flink.source;
 
 import io.nats.client.support.SerializableConsumerConfiguration;
 import io.synadia.flink.payload.PayloadDeserializer;
+import io.synadia.flink.source.config.SourceConfiguration;
 
 public class NatsJetstreamSourceBuilder<OutputT> {
 
@@ -47,7 +48,8 @@ public class NatsJetstreamSourceBuilder<OutputT> {
         if (serializableConsumerConfiguration == null ) {
             throw new IllegalStateException("Consumer configuration not provided");
         }
-        SourceConfiguration sourceConfiguration = new SourceConfiguration(subject, natsUrl, serializableConsumerConfiguration);
+        SourceConfiguration
+                sourceConfiguration = new SourceConfiguration(subject, natsUrl, serializableConsumerConfiguration);
 
         return new NatsJetStreamSource<>(deserializationSchema, sourceConfiguration);
     }

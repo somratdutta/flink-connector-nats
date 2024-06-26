@@ -1,4 +1,4 @@
-package io.synadia.flink.source;
+package io.synadia.flink.source.reader;
 
 import io.nats.client.Connection;
 import io.nats.client.Consumer;
@@ -6,12 +6,11 @@ import io.nats.client.JetStreamSubscription;
 import io.nats.client.Message;
 import io.nats.client.PullSubscribeOptions;
 import io.nats.client.api.AckPolicy;
-import io.synadia.flink.source.SourceConfiguration;
+import io.synadia.flink.source.config.SourceConfiguration;
 import io.synadia.flink.source.split.NatsSubjectSplit;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.flink.api.common.time.Deadline;
 import org.apache.flink.connector.base.source.reader.RecordsBySplits;

@@ -1,8 +1,6 @@
-package io.synadia.flink.source;
+package io.synadia.flink.source.config;
 
-import io.nats.client.api.ConsumerConfiguration;
 import io.nats.client.support.SerializableConsumerConfiguration;
-import io.synadia.flink.source.js.NatsJetstreamSourceOptions;
 import java.time.Duration;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.SourceReaderOptions;

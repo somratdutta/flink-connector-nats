@@ -1,4 +1,4 @@
-package io.synadia.flink.source.js;
+package io.synadia.flink.source.config;
 
 import java.time.Duration;
 import org.apache.flink.annotation.PublicEvolving;
