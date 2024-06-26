@@ -1,6 +1,7 @@
 package io.synadia.flink.source;
 
 import io.nats.client.api.ConsumerConfiguration;
+import io.nats.client.support.SerializableConsumerConfiguration;
 import io.synadia.flink.source.js.NatsJetstreamSourceOptions;
 import java.time.Duration;
 import org.apache.flink.configuration.Configuration;
@@ -37,9 +38,9 @@ public class SourceConfiguration extends Configuration {
         enableAutoAcknowledgeMessage = get(NatsJetstreamSourceOptions.ENABLE_AUTO_ACK);
     }
 
-    public SourceConfiguration(String subject, String url, ConsumerConfiguration consumerConfiguration) {
+    public SourceConfiguration(String subject, String url, SerializableConsumerConfiguration consumerConfiguration) {
         this();
-        this.consumerName = consumerConfiguration.getDurable();
+        this.consumerName = consumerConfiguration.getConsumerConfiguration().getDurable();
         this.url = url;
         this.subjectName = subject;
 

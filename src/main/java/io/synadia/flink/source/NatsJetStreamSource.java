@@ -26,25 +26,25 @@ import java.util.List;
 
 public class NatsJetStreamSource<OutputT> implements Source<OutputT, NatsSubjectSplit, Collection<NatsSubjectSplit>>, ResultTypeQueryable<OutputT> {
 
-    private final PayloadDeserializer<OutputT> deserializationSchema;
-    private static final Logger LOG = LoggerFactory.getLogger(NatsJetstreamSource.class);
+    private PayloadDeserializer<OutputT> deserializationSchema;
+    private static final Logger LOG = LoggerFactory.getLogger(NatsJetStreamSource.class);
     private SourceConfiguration sourceConfiguration;
 
 
     // Package-private constructor to ensure usage of the Builder for object creation
-    NatsJetstreamSource(PayloadDeserializer<OutputT> deserializationSchema, SourceConfiguration sourceConfiguration) {
+    NatsJetStreamSource(PayloadDeserializer<OutputT> deserializationSchema, SourceConfiguration sourceConfiguration) {
         this.deserializationSchema = deserializationSchema;
         this.sourceConfiguration = sourceConfiguration;
     }
 
     @Override
     public TypeInformation<OutputT> getProducedType() {
-        return payloadDeserializer.getProducedType();
+        return deserializationSchema.getProducedType();
     }
 
     @Override
     public Boundedness getBoundedness() {
-        return this.mode;
+        return null;
     }
 
     @Override

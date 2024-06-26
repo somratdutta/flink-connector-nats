@@ -1,4 +1,4 @@
-package io.synadia.flink.source.js;
+package io.synadia.flink.source;
 
 import io.synadia.flink.source.split.NatsSubjectSplit;
 

@@ -1,4 +1,4 @@
-package io.synadia.flink.source.js;
+package io.synadia.flink.source;
 
 import io.nats.client.Message;
 import io.synadia.flink.payload.PayloadDeserializer;

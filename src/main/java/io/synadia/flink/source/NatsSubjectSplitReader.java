@@ -1,4 +1,4 @@
-package io.synadia.flink.source.js;
+package io.synadia.flink.source;
 
 import io.nats.client.Connection;
 import io.nats.client.Consumer;

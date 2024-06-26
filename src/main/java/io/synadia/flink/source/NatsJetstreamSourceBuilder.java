@@ -3,18 +3,8 @@
 
 package io.synadia.flink.source;
 
-import static io.synadia.flink.Constants.SOURCE_STARTUP_JITTER_MAX;
-import static io.synadia.flink.Constants.SOURCE_STARTUP_JITTER_MIN;
-import static io.synadia.flink.Constants.SOURCE_SUBJECTS;
-import io.nats.client.api.ConsumerConfiguration;
-import io.synadia.flink.Utils;
-import io.synadia.flink.common.NatsSinkOrSourceBuilder;
+import io.nats.client.support.SerializableConsumerConfiguration;
 import io.synadia.flink.payload.PayloadDeserializer;
-import io.synadia.flink.source.SourceConfiguration;
-import java.util.List;
-import java.util.Properties;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.connector.base.source.reader.SourceReaderOptions;
 
 public class NatsJetstreamSourceBuilder<OutputT> {
 
@@ -22,7 +12,7 @@ public class NatsJetstreamSourceBuilder<OutputT> {
 
     private String natsUrl;
 
-    private ConsumerConfiguration cc;
+    private SerializableConsumerConfiguration serializableConsumerConfiguration;
 
     private String subject;
 
@@ -36,8 +26,8 @@ public class NatsJetstreamSourceBuilder<OutputT> {
         return this;
     }
 
-    public NatsJetstreamSourceBuilder setCc(ConsumerConfiguration cc) {
-        this.cc = cc;
+    public NatsJetstreamSourceBuilder setCc(SerializableConsumerConfiguration serializableConsumerConfiguration) {
+        this.serializableConsumerConfiguration = serializableConsumerConfiguration;
         return this;
     }
 
@@ -50,15 +40,15 @@ public class NatsJetstreamSourceBuilder<OutputT> {
      * Build a NatsSource.
      * @return the source
      */
-    public NatsJetstreamSource<OutputT> build() {
+    public NatsJetStreamSource<OutputT> build() {
         if (deserializationSchema == null) {
             throw new IllegalStateException("Valid payload serializer class must be provided.");
         }
-        if (cc == null ) {
+        if (serializableConsumerConfiguration == null ) {
             throw new IllegalStateException("Consumer configuration not provided");
         }
-        SourceConfiguration sourceConfiguration = new SourceConfiguration(subject, natsUrl, cc);
+        SourceConfiguration sourceConfiguration = new SourceConfiguration(subject, natsUrl, serializableConsumerConfiguration);
 
-        return new NatsJetstreamSource<>(deserializationSchema, sourceConfiguration);
+        return new NatsJetStreamSource<>(deserializationSchema, sourceConfiguration);
     }
 }

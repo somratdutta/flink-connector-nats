@@ -1,4 +1,4 @@
-package io.synadia.flink.source.js;
+package io.synadia.flink.source;
 
 import static java.util.Collections.singletonList;
 import io.nats.client.Message;

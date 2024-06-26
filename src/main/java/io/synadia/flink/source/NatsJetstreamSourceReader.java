@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 public class NatsJetstreamSourceReader<OutputT> extends SourceReaderBase<
         Message, OutputT, NatsSubjectSplit, NatsSubjectSplitState> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(NatsJetStreamSourceReader.class);
+    private static final Logger LOG = LoggerFactory.getLogger(NatsJetstreamSourceReader.class);
 
     private Connection connection;
     private final AtomicReference<Throwable> cursorCommitThrowable;
@@ -50,12 +50,12 @@ public class NatsJetstreamSourceReader<OutputT> extends SourceReaderBase<
     private ScheduledExecutorService scheduler;
 
     public NatsJetstreamSourceReader(FutureCompletingBlockingQueue<RecordsWithSplitIds<Message>> elementsQueue,
-                            NatsSourceFetcherManager fetcherManager,
+                                     NatsSourceFetcherManager fetcherManager,
                                      PayloadDeserializer<OutputT> deserializationSchema,
-                            SourceConfiguration configuration,
-                            Connection connection,
-                            SourceReaderContext readerContext
-                                     ) {
+                                     SourceConfiguration configuration,
+                                     Connection connection,
+                                     SourceReaderContext readerContext
+    ) {
         super(elementsQueue, fetcherManager, new NatsRecordEmitter<>(deserializationSchema), configuration, readerContext);
         this.sourceConfiguration = configuration;
         this.connection = connection;
@@ -169,7 +169,7 @@ public class NatsJetstreamSourceReader<OutputT> extends SourceReaderBase<
         // So the checkpoint didn't really happen, so we just pass a fake checkpoint id.
         List<NatsSubjectSplit> splits = super.snapshotState(1L);
         for (NatsSubjectSplit split : splits) {
-                cursors.put(split.getSubject(), split.getCurrentMessages());
+            cursors.put(split.getSubject(), split.getCurrentMessages());
         }
 
         try {
@@ -213,7 +213,7 @@ public class NatsJetstreamSourceReader<OutputT> extends SourceReaderBase<
                 elementsQueue,
                 fetcherManager,
                 deserializationSchema,
-                readerContext.getConfiguration(),
+                sourceConfiguration,
                 connection,
                 readerContext);
     }

@@ -4,17 +4,19 @@
 package io.synadia.io.synadia.flink;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import io.nats.client.JetStream;
+import io.nats.client.JetStreamManagement;
 import io.nats.client.api.AckPolicy;
 import io.nats.client.api.ConsumerConfiguration;
 import io.nats.client.api.SequenceInfo;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.impl.Headers;
+import io.nats.client.support.SerializableConsumerConfiguration;
 import io.synadia.flink.Utils;
 import io.synadia.flink.payload.PayloadDeserializer;
 import io.synadia.flink.payload.StringPayloadDeserializer;
-import io.synadia.flink.source.js.NatsConsumerConfig;
-import io.synadia.flink.source.js.NatsJetstreamSource;
-import io.synadia.flink.source.js.NatsJetstreamSourceBuilder;
+import io.synadia.flink.source.NatsJetStreamSource;
+import io.synadia.flink.source.NatsJetstreamSourceBuilder;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.time.Time;
@@ -46,8 +48,8 @@ public class NatsJetStreamSourceTest extends TestBase {
                     .build();
             nc.jetStreamManagement().addStream(stream);
             ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder()
-                            .durable(consumerName).ackPolicy(AckPolicy.All)
-                            .filterSubject(sourceSubject1).build();
+                    .durable(consumerName).ackPolicy(AckPolicy.All)
+                    .filterSubject(sourceSubject1).build();
             nc.jetStreamManagement().addOrUpdateConsumer(streamName, consumerConfiguration);
             nc.jetStream().publish(sourceSubject1, "Hi".getBytes());
             nc.jetStream().publish(sourceSubject1, "Hello".getBytes());
@@ -55,22 +57,17 @@ public class NatsJetStreamSourceTest extends TestBase {
             // --------------------------------------------------------------------------------
             Properties connectionProperties = defaultConnectionProperties(url);
             PayloadDeserializer<String> deserializer = new WriteData();
-            NatsConsumerConfig consumerConfig = new NatsConsumerConfig.Builder().withConsumerName(consumerName).
-                    withBatchSize(5).withStreamName(streamName).build();
+            SerializableConsumerConfiguration serializableConsumerConfiguration = new SerializableConsumerConfiguration();
+            serializableConsumerConfiguration.setConsumerConfiguration(consumerConfiguration);
             NatsJetstreamSourceBuilder<String> builder = new NatsJetstreamSourceBuilder<String>()
                     .setDeserializationSchema(deserializer)
-                    .setCc(consumerConfiguration)
+                    .setCc(serializableConsumerConfiguration)
                     .setNatsUrl("localhost:4222")
                     .setSubject(sourceSubject1);
 
             NatsJetStreamSource<String> natsSource = builder.build();
             StreamExecutionEnvironment env = getStreamExecutionEnvironment();
-           // env.enableCheckpointing(10000L, CheckpointingMode.AT_LEAST_ONCE);
-           // env.getCheckpointConfig().setCheckpointingMode(CheckpointingMode.AT_LEAST_ONCE);
             env.getCheckpointConfig().setCheckpointInterval(10000L);
-           // env.getCheckpointConfig().setMinPauseBetweenCheckpoints(1 * 60 * 1000);
-            //env.getCheckpointConfig().setMaxConcurrentCheckpoints(1);
-            //env.getCheckpointConfig().setCheckpointTimeout(10 * 60 * 1000);
             DataStream<String> ds = env.fromSource(natsSource, WatermarkStrategy.noWatermarks(),"nats-source-input");
             ds.map(String::toUpperCase);//To Avoid Sink Dependency
             env.setRestartStrategy(RestartStrategies.fixedDelayRestart(5, Time.seconds(5)));
@@ -111,10 +108,9 @@ public class NatsJetStreamSourceTest extends TestBase {
             Properties connectionProperties = defaultConnectionProperties(url);
             SerializableConsumerConfiguration consumerConfig = new SerializableConsumerConfiguration(cc);
 
-            NatsJetStreamSourceBuilder<String> builder = new NatsJetStreamSourceBuilder<String>()
-                    .subjects(sourceSubject).payloadDeserializer(deserializer)
-                    .boundedness(Boundedness.CONTINUOUS_UNBOUNDED).consumerConfig(consumerConfig);
-            builder.connectionProperties(connectionProperties);
+            NatsJetstreamSourceBuilder<String> builder = new NatsJetstreamSourceBuilder<String>()
+                    .setSubject(sourceSubject).setDeserializationSchema(deserializer);
+
             DataStream<String> ds = env.fromSource(builder.build(), WatermarkStrategy.noWatermarks(), "nats-source-input");
             ds.map(String::toUpperCase);
 
