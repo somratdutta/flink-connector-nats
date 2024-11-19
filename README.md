@@ -15,6 +15,28 @@ Connect NATS to Flink with Java
 [![Build Main Badge](https://github.com/synadia-io/flink-connector-nats/actions/workflows/build-main.yml/badge.svg?event=push)](https://github.com/synadia-io/flink-connector-nats/actions/workflows/build-main.yml)
 [![Release Badge](https://github.com/synadia-io/flink-connector-nats/actions/workflows/build-release.yml/badge.svg?event=release)](https://github.com/synadia-io/flink-connector-nats/actions/workflows/build-release.yml)
 
+---
+
+## What's New in 2.0.0-beta release
+The connector now includes support for `NATS JetStream`, enabling:
+- **Durable Message Streaming**: Persistent streams with message replay capabilities.
+- **Acknowledgment Management**: Handle message processing confirmations seamlessly.
+- **Checkpoint Integration**: Works with Flink's checkpointing mechanism.
+
+---
+
+## Documentation
+
+Detailed documentation can be found in the [docs/](./docs/) directory:
+- [Overview](./docs/overview.md)
+- [Source Configuration](./docs/source.md)
+- [Sink Configuration](./docs/sink.md)
+- [JetStream Integration](./docs/jetstream.md)
+
+Refer to these for detailed installation, configuration, and usage examples.
+
+---
+
 ## Java Version
 
 The connector requires Java version 11 or later to be compatible with Flink libraries. 
@@ -368,6 +390,10 @@ If you need a snapshot version, you must enable snapshots and change your depend
     <version>{major.minor.patch}-SNAPSHOT</version>
 </dependency>
 ```
+---
+
+## Contributing
+Contributions are welcome! See [Docs](docs/contributing.md) for guidelines.
 
 Copyright (c) 2023-2024 Synadia Communications Inc. All Rights Reserved.
 See [LICENSE](LICENSE) and [NOTICE](NOTICE) file for details.
