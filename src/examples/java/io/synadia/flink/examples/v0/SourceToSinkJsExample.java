@@ -8,28 +8,23 @@ import io.synadia.flink.utils.PropertiesUtils;
 import io.synadia.flink.v0.NatsJetStreamSource;
 import io.synadia.flink.v0.NatsJetStreamSourceBuilder;
 import io.synadia.flink.v0.payload.StringPayloadDeserializer;
-import io.synadia.flink.v0.payload.StringPayloadSerializer;
-import io.synadia.flink.v0.sink.NatsSink;
-import io.synadia.flink.v0.sink.NatsSinkBuilder;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.io.IOException;
 import java.util.Properties;
 
 public class SourceToSinkJsExample {
     public static void main(String[] args) throws Exception {
         // Load configuration from application.properties
+        //Properties props = PropertiesUtils.loadPropertiesFromFile("/Users/somratdutta/IdeaProjects/sdutta-nats-flink-connector/src/test/java/io/synadia/io/synadia/flink/v0/nats-cloud-application.properties");
         Properties props = PropertiesUtils.loadPropertiesFromFile("src/examples/resources/application.properties");
 
         // Define static names loaded from properties
         String sourceSubject = props.getProperty("source.JsSubject");
-        String sinkSubject = props.getProperty("sink.JsSubject");
         String streamName = props.getProperty("source.stream");
         String consumerName = props.getProperty("source.consumer");
 
@@ -47,9 +42,6 @@ public class SourceToSinkJsExample {
         // Create a consumer for the JetStream source
         createConsumer(jsm, streamName, sourceSubject, consumerName);
 
-        // List to capture sink messages received via the NATS dispatcher
-        final List<Message> syncList = Collections.synchronizedList(new ArrayList<>());
-
         // Configure the NATS JetStream Source
         Properties connectionProperties = props;
         StringPayloadDeserializer deserializer = new StringPayloadDeserializer();
@@ -64,47 +56,29 @@ public class SourceToSinkJsExample {
         // Configure Flink environment
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.getCheckpointConfig().setCheckpointInterval(10_000L); // Set checkpoint interval
+
+        // Create the data stream from NATS JetStream Source
         DataStream<String> ds = env.fromSource(natsSource, WatermarkStrategy.noWatermarks(), "nats-source-input");
 
-        // Create a NATS dispatcher to listen to sink messages
-        Dispatcher dispatcher = nc.createDispatcher();
-        dispatcher.subscribe(sinkSubject, syncList::add); // Collect sink messages
-
-        // Configure the NATS JetStream Sink
-        NatsSink<String> sink = new NatsSinkBuilder<String>()
-                .subjects(sinkSubject)
-                .connectionProperties(connectionProperties)
-                .payloadSerializer(new StringPayloadSerializer()) // Serialize messages for sink
-                .build();
-        ds.sinkTo(sink);
+        // Simple transformation: Convert to uppercase and print to the terminal
+        ds.map(String::toUpperCase) // Transformation to uppercase
+                .map(message -> {
+                    System.out.println("Transformed message: " + message);
+                    return message;
+                });
 
         // Configure Flink restart strategy
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(5, Time.seconds(5)));
 
         // Execute Flink pipeline asynchronously
-        env.executeAsync("JetStream Source-to-Sink Example");
+        env.execute("JetStream Source-to-Terminal Example");
 
-        // Allow the job to run for 12 seconds
-        Thread.sleep(12_000);
-
-        // Gracefully close the dispatcher and Flink environment
-        dispatcher.unsubscribe(sinkSubject);
-        env.close();
-
-        // Print received sink messages
-        for (Message m : syncList) {
-            String payload = new String(m.getData());
-            System.out.println("Received message at sink: " + payload);
-        }
-
-        // Delete the stream after the test
+        // Clean up NATS resources
         jsm.deleteStream(streamName);
         System.out.println("Stream deleted: " + streamName);
 
         // Close the NATS connection
         nc.close();
-
-        // Terminate the application
         System.exit(0);
     }
 
@@ -112,7 +86,38 @@ public class SourceToSinkJsExample {
      * Connect to the NATS server using provided properties.
      */
     private static Connection connect(Properties props) throws Exception {
-        return Nats.connect(props.getProperty("io.nats.client.url"));
+        // Build NATS Options
+        Options.Builder builder = new Options.Builder();
+
+        // Set the server URL
+        String serverUrl = props.getProperty("io.nats.client.url");
+        if (serverUrl == null || serverUrl.isEmpty()) {
+            throw new IllegalArgumentException("NATS server URL is not specified in properties.");
+        }
+        builder.server(serverUrl);
+
+        /*// Set TLS truststore if provided
+        String trustStorePath = props.getProperty("io.nats.client.trustStorePath");
+        String trustStorePassword = props.getProperty("io.nats.client.trustStorePassword");
+        if (trustStorePath != null && !trustStorePath.isEmpty()) {
+            builder.truststorePath(trustStorePath);
+            if (trustStorePassword != null && !trustStorePassword.isEmpty()) {
+                builder.truststorePassword(trustStorePassword.toCharArray());
+            }
+        }
+
+        // Set credentials for JWT authentication
+        String credsPath = props.getProperty("io.nats.client.credsPath");
+        if (credsPath != null && !credsPath.isEmpty()) {
+            builder.authHandler(Nats.credentials(credsPath));
+        }*/
+
+        // Build and connect to NATS
+        try {
+            return Nats.connect(builder.build());
+        } catch (Exception e) {
+            throw new IOException("Unable to connect to NATS server.", e);
+        }
     }
 
     /**
