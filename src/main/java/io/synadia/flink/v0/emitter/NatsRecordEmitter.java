@@ -29,6 +29,7 @@ public class NatsRecordEmitter<OutputT>
         // Deserialize the message and since it to output.
         payloadDeserializer.getObject(splitState.getSplit().getSubject(), element.getData(), null);
         splitState.getSplit().getCurrentMessages().add(element);
+        output.collect(payloadDeserializer.getObject(splitState.getSplit().getSubject(), element.getData(), null));
     }
 
     private static class SourceOutputWrapper<OutputT> implements Collector<OutputT> {
