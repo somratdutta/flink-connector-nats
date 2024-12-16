@@ -81,7 +81,7 @@ public class SourceToSinkJsExample {
                 .connectionProperties(connectionProperties)
                 .payloadSerializer(new StringPayloadSerializer()) // Serialize messages for sink
                 .build();
-        ds.sinkTo(sink);
+        ds.map(String::toUpperCase).sinkTo(sink);
 
         // Configure Flink restart strategy
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(5, Time.seconds(5)));
