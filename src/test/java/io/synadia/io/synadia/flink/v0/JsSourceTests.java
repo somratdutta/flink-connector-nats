@@ -5,8 +5,8 @@ package io.synadia.io.synadia.flink.v0;
 
 import io.nats.client.*;
 import io.nats.client.api.*;
-import io.synadia.flink.v0.NatsJetStreamSource;
-import io.synadia.flink.v0.NatsJetStreamSourceBuilder;
+import io.synadia.flink.v0.source.NatsJetStreamSource;
+import io.synadia.flink.v0.source.NatsJetStreamSourceBuilder;
 import io.synadia.flink.v0.payload.PayloadDeserializer;
 import io.synadia.flink.v0.payload.StringPayloadDeserializer;
 import io.synadia.flink.v0.payload.StringPayloadSerializer;
