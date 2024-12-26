@@ -10,6 +10,7 @@ import io.synadia.flink.v0.sink.NatsSinkBuilder;
 import nats.io.ConsoleOutput;
 import nats.io.NatsServerRunner;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.file.src.FileSource;
 import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
 import org.apache.flink.core.fs.Path;
@@ -46,7 +47,6 @@ public class TestBase {
 
     public static StreamExecutionEnvironment getStreamExecutionEnvironment() {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        //env.setRuntimeMode(RuntimeExecutionMode.STREAMING);
         return env;
     }
 
@@ -163,6 +163,10 @@ public class TestBase {
 
     public static String subject() {
         return random("subject");
+    }
+
+    public static String consumer() {
+        return random("consumer");
     }
 
     public static String name() {
