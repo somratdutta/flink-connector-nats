@@ -4,12 +4,12 @@
 package io.synadia.flink.v0.source.reader;
 
 import io.nats.client.Message;
-import io.synadia.flink.utils.ConnectionFactory;
 import io.synadia.flink.v0.emitter.NatsRecordEmitter;
 import io.synadia.flink.v0.payload.PayloadDeserializer;
 import io.synadia.flink.v0.source.NatsJetStreamSourceConfiguration;
 import io.synadia.flink.v0.source.split.NatsSubjectSplit;
 import io.synadia.flink.v0.source.split.NatsSubjectSplitState;
+import io.synadia.flink.v0.utils.ConnectionFactory;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connector.source.ReaderOutput;
 import org.apache.flink.api.connector.source.SourceReaderContext;
@@ -25,7 +25,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static io.synadia.flink.utils.MiscUtils.generatePrefixedId;
+import static io.synadia.flink.v0.utils.MiscUtils.generatePrefixedId;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 @Internal
@@ -89,18 +89,18 @@ public class NatsJetStreamSourceReader<OutputT>
 
     @Override
     public void notifyCheckpointComplete(long checkpointId) throws Exception {
-        LOG.debug("Committing cursors for checkpoint {}", checkpointId);
+        LOG.debug("{} | Committing cursors for checkpoint {}", id, checkpointId);
         //TODO convert string to Subject Class
         Map<String, List<Message>> cursors = cursorsToCommit.get(checkpointId);
         try {
             ((NatsSourceFetcherManager) splitFetcherManager).acknowledgeMessages(cursors);
-            LOG.debug("Successfully acknowledge cursors for checkpoint {}", checkpointId);
+            LOG.debug("{} | Successfully acknowledge cursors for checkpoint {}", id, checkpointId);
 
             // Clean up the cursors.
             cursorsOfFinishedSplits.keySet().removeAll(cursors.keySet());
             cursorsToCommit.headMap(checkpointId + 1).clear();
         } catch (Exception e) {
-            LOG.error("Failed to acknowledge cursors for checkpoint {}", checkpointId, e);
+            LOG.error("{} | Failed to acknowledge cursors for checkpoint {}", id, checkpointId, e);
             cursorCommitThrowable.compareAndSet(null, e);
         }
     }
@@ -137,11 +137,6 @@ public class NatsJetStreamSourceReader<OutputT>
         // Close all the finished splits.
         for (String splitId : finishedSplitIds.keySet()) {
             ((NatsSourceFetcherManager) splitFetcherManager).closeFetcher(splitId);
-        }
-
-        // We don't require new splits, all the splits are pre-assigned by source enumerator.
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("onSplitFinished event: {}", finishedSplitIds);
         }
 
         for (Map.Entry<String, NatsSubjectSplitState> entry : finishedSplitIds.entrySet()) {
