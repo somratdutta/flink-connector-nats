@@ -140,3 +140,4 @@ class NatsSinkWriterTest extends TestBase {
         @Override public SerializationSchema.InitializationContext asSerializationSchemaInitializationContext() { return null; }
     }
 }
+

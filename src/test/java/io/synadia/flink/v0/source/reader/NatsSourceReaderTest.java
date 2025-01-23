@@ -280,4 +280,3 @@ class NatsSourceReaderTest extends TestBase {
         );
     }
 }
-
