@@ -102,6 +102,19 @@ public class NatsSinkBuilder<InputT> extends NatsSinkOrSourceBuilder<NatsSinkBui
             }
         }
 
+        // Validate subjects
+        if (subjects == null || subjects.isEmpty()) {
+            throw new IllegalStateException("Subjects list is empty. At least one subject must be provided.");
+        }
+        for (String subject : subjects) {
+            if (subject == null || subject.trim().isEmpty()) {
+                throw new IllegalStateException("Invalid subject: cannot be empty or null");
+            }
+            if (subject.contains("..")) {
+                throw new IllegalStateException("Invalid subject: pattern contains consecutive dots - " + subject);
+            }
+        }
+
         baseBuild();
         return new NatsSink<>(subjects, payloadSerializer, createConnectionFactory());
     }
